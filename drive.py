@@ -76,7 +76,7 @@ cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)
 #        std of y_pos of path plan along x=range(0,192) |
 #        how many meters it can see]
 # 12 * 128 * 256 is 2 consecutive imgs in YUV space of size 256 * 512
-lanedetector = tf.keras.models.load_model("supercombo.keras")
+lanedetector = tf.keras.models.load_model(str(pathlib.Path(__file__).parent.absolute()) + "/supercombo.keras")
 
 # We need a place to keep two separate consecutive image frames
 # since that's what SuperCombo uses
