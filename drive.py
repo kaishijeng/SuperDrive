@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python3.8
 # -*- coding: utf-8 -*-
 
 #
@@ -8,11 +8,14 @@
 #
 
 import cv2
+import sys
+import time
 import pathlib
 import matplotlib
 import numpy as np
 import tensorflow as tf
 from parser import parser
+import savitzkygolay as sg
 import matplotlib.pyplot as plt
 from undistort.undistort import undistort
 
@@ -23,7 +26,7 @@ from common.transformations.camera import transform_img, eon_intrinsics
 # ============================================================================ #
 
 # Configure capture here
-CAMERA_DEVICE = "test.hevc"
+CAMERA_DEVICE = sys.argv[1]
 
 # ============================================================================ #
 
@@ -61,8 +64,15 @@ state = np.zeros((1, 512))
 # Note: not implemented in SuperDrive (yet)
 desire = np.zeros((1, 8))
 
+# Maximum frame processing time tracker
+maxFrameTime = 0
+firstFrame = True
+
 # Main loop here
 while True:
+
+    # Get frame start time (ns)
+    t_frameStart = time.time_ns()
 
     # Read frame
     (ret, frame) = cap.read()
@@ -81,7 +91,6 @@ while True:
     # to the sky, since my camera can "see" the hood and that probably won't
     # help us in the task of lane detection, so we crop that out
     frame = frame[14:270, 24:536]
-    cv2.imshow("Input", frame)
 
     # Then we want to convert this to YUV
     frameYUV = cv2.cvtColor(frame, cv2.COLOR_BGR2YUV_I420)
@@ -115,15 +124,48 @@ while True:
     parsed = parser(networkOutput)
     state = networkOutput[-1]
 
-    # Draw plots
+    # Now we have all the points!
+    # These correspond to points with x = <data in here>, y = range from
+    # 0 to 192 (output of model)
+    leftLanePoints = parsed["lll"][0]
+    rightLanePoints = parsed["rll"][0]
+    pathPoints = parsed["path"][0]
+
+    # We may also want to smooth this out
+    smoothedLeftLanePoints = sg.savitzky_golay(leftLanePoints, 51, 3)
+    smoothedRightLanePoints = sg.savitzky_golay(rightLanePoints, 51, 3)
+    smoothedPathPoints = sg.savitzky_golay(pathPoints, 51, 3)
+
+    # Get time after output parsing
+    t_afterOutputParsing = time.time_ns()
+
+    # Compute running times
+    p_totalFrameTime = round((t_afterOutputParsing - t_frameStart) / 1000000, 3)
+
+    # Get maximum frame time for reference (unless this is the first frame,
+    # then we can disregard that since it'll be really high)
+    if p_totalFrameTime > maxFrameTime and firstFrame != True:
+        maxFrameTime = p_totalFrameTime
+
+    # Output (enlarged) frame with text overlay
     if True:
+        canvas = frame.copy()
+        canvas = cv2.resize(canvas, ((1024, 512)))
+        cv2.putText(canvas, "Total frame time: " + str(p_totalFrameTime) + " ms (maximum: " + str(maxFrameTime) + " ms)", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
+        cv2.imshow("Frame", canvas)
+
+    # Draw plots
+    if False:
         plt.clf()
         plt.title("Lane/Path Prediction")
 
+        # Interactive mode on to not steal output
+        plt.ion()
+
         # Left/right lane and predicted path
-        plt.plot(parsed["lll"][0], range(0, 192), "b-", linewidth=1)
-        plt.plot(parsed["rll"][0], range(0, 192), "r-", linewidth=1)
-        plt.plot(parsed["path"][0], range(0, 192), "g-", linewidth=1)
+        plt.plot(smoothedLeftLanePoints, range(0, 192), "b-", linewidth=1)
+        plt.plot(smoothedRightLanePoints, range(0, 192), "r-", linewidth=1)
+        plt.plot(smoothedPathPoints, range(0, 192), "g-", linewidth=1)
 
         # Constrain X-axis so that our plot won't dance around
         plt.xlim(-5, 5)
@@ -134,3 +176,6 @@ while True:
 
     if cv2.waitKey(1) & 0xFF == ord("q"):
         break
+
+    # Not first frame anymore
+    firstFrame = False
