@@ -195,28 +195,29 @@ while True:
         cv2.putText(canvas, "Position: " + str(round(currentPredictedPos, 3)) + " m off centerline", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
 
         # Create canvas for graph plotting
-        plotCanvas = np.zeros((600, 200, 3), dtype=np.uint8)
+        plotCanvas = np.zeros((500, 200, 3), dtype=np.uint8)
 
         # Plot points!
-        ppm = 20
-        for i in range(60):
-            cv2.circle(plotCanvas, (int(100 - abs(leftLanePoints[i] * ppm)), int(i * ppm/2)), 2, (160, 160, 160), -1)
-            cv2.circle(plotCanvas, (int(100 + abs(rightLanePoints[i] * ppm)), int(i * ppm/2)), 2, (160, 160, 160), -1)
-            cv2.circle(plotCanvas, (int(100 - (pathPoints[i] * ppm)), int(i * ppm/2)), 4, (10, 255, 10), -1)
+        ppmY = 10
+        ppmX = 20
 
-        # Add an "absolute center" triangle
-        cv2.drawContours(plotCanvas, [np.array([(90,0), (110,0), (100, 10)])], 0, (220,220,220), -1)
+        # We know we can only display 500 / ppmY = 50 meters ahead
+        # so limiting our loop will allow for a faster processing time
+        for i in range(51):
+            cv2.circle(plotCanvas, (int(100 - abs(leftLanePoints[i] * ppmX)), int(i * ppmY)), 2, (160, 160, 160), -1)
+            cv2.circle(plotCanvas, (int(100 + abs(rightLanePoints[i] * ppmX)), int(i * ppmY)), 2, (160, 160, 160), -1)
+            cv2.circle(plotCanvas, (int(100 - (pathPoints[i] * ppmX)), int(i * ppmY)), 4, (10, 255, 10), -1)
 
         # Flip plot path for display
         plotCanvas = cv2.flip(plotCanvas, 0)
 
         # Add some texts for distance
-        cv2.putText(plotCanvas, "0 m", (10, 600), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200,200,200), 1)
-        cv2.putText(plotCanvas, "5 m", (10, 500), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200,200,200), 1)
+        cv2.putText(plotCanvas, "0 m", (10, 490), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200,200,200), 1)
         cv2.putText(plotCanvas, "10 m", (10, 400), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200,200,200), 1)
-        cv2.putText(plotCanvas, "15 m", (10, 300), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200,200,200), 1)
-        cv2.putText(plotCanvas, "20 m", (10, 200), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200,200,200), 1)
-        cv2.putText(plotCanvas, "25 m", (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200,200,200), 1)
+        cv2.putText(plotCanvas, "20 m", (10, 300), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200,200,200), 1)
+        cv2.putText(plotCanvas, "30 m", (10, 200), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200,200,200), 1)
+        cv2.putText(plotCanvas, "40 m", (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200,200,200), 1)
+        cv2.putText(plotCanvas, "50 m", (10, 10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200,200,200), 1)
 
         cv2.imshow("SuperDrive", canvas)
         cv2.imshow("Vision path", plotCanvas)
