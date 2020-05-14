@@ -23,7 +23,7 @@ from common.transformations.camera import transform_img, eon_intrinsics
 # ============================================================================ #
 
 # Configure capture here
-CAMERA_DEVICE = "test.m4v"
+CAMERA_DEVICE = "test.hevc"
 
 # ============================================================================ #
 
