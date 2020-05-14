@@ -172,9 +172,12 @@ while True:
     pathPoints = parsed["path"][0]
 
     # We may also want to smooth this out
-    smoothedLeftLanePoints = sg.savitzky_golay(leftLanePoints, 51, 3)
-    smoothedRightLanePoints = sg.savitzky_golay(rightLanePoints, 51, 3)
-    smoothedPathPoints = sg.savitzky_golay(pathPoints, 51, 3)
+    leftLanePoints = sg.savitzky_golay(leftLanePoints, 51, 3)
+    rightLanePoints = sg.savitzky_golay(rightLanePoints, 51, 3)
+    pathPoints = sg.savitzky_golay(pathPoints, 51, 3)
+
+    # Compute position on current lane
+    currentPredictedPos = (-1) * pathPoints[0]
 
     # Compute running time
     p_totalFrameTime = round((timer() - t_frameStart) * 1000, 2)
@@ -185,8 +188,9 @@ while True:
     if args.showOpenCVVisualization == True:
         canvas = frame.copy()
         canvas = cv2.resize(canvas, ((1024, 512)))
-        cv2.putText(canvas, "Frame processing time: " + str(p_totalFrameTime) + " ms (" + str(fpsActual) + " fps)", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
+        cv2.putText(canvas, "Vision processing time: " + str(p_totalFrameTime) + " ms (" + str(fpsActual) + " fps)", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
         cv2.putText(canvas, "Device: " + tfDevice, (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
+        cv2.putText(canvas, "Position: " + str(round(currentPredictedPos, 3)) + " m off centerline", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
 
         cv2.imshow("Frame", canvas)
         if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -201,9 +205,9 @@ while True:
         plt.ion()
 
         # Left/right lane and predicted path
-        plt.plot(smoothedLeftLanePoints, range(0, 192), "b-", linewidth=1)
-        plt.plot(smoothedRightLanePoints, range(0, 192), "r-", linewidth=1)
-        plt.plot(smoothedPathPoints, range(0, 192), "g-", linewidth=1)
+        plt.plot(leftLanePoints, range(0, 192), "b-", linewidth=1)
+        plt.plot(rightLanePoints, range(0, 192), "r-", linewidth=1)
+        plt.plot(pathPoints, range(0, 192), "g-", linewidth=1)
 
         # Constrain X-axis so that our plot won't dance around
         plt.xlim(-5, 5)
