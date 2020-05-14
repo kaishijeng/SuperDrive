@@ -118,10 +118,17 @@ while True:
     # Draw plots
     if True:
         plt.clf()
-        plt.title("Lane/Path Detection")
+        plt.title("Lane/Path Prediction")
+
+        # Left/right lane and predicted path
         plt.plot(parsed["lll"][0], range(0, 192), "b-", linewidth=1)
         plt.plot(parsed["rll"][0], range(0, 192), "r-", linewidth=1)
         plt.plot(parsed["path"][0], range(0, 192), "g-", linewidth=1)
+
+        # Constrain X-axis so that our plot won't dance around
+        plt.xlim(-5, 5)
+
+        # Invert X-axis
         plt.gca().invert_xaxis()
         plt.pause(0.001)
 
