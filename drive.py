@@ -7,6 +7,35 @@
 # path detection based on comma.ai's SuperCombo neural network model
 #
 
+# ============================================================================ #
+# Parse arguments
+import os
+import warnings
+import argparse
+
+apr = argparse.ArgumentParser(description = "Predicts lane line and vehicle path using the SuperCombo neural network!")
+apr.add_argument("--input", type=str, dest="inputFile", help="Input capture device or video file", required=True)
+apr.add_argument("--disable-gpu", dest="disableGPU", action="store_true", help="Disables the use of GPU for inferencing")
+apr.add_argument("--disable-warnings", dest="disableWarnings", action="store_true", help="Disables console warning messages")
+apr.add_argument("--show-opencv-window", dest="showOpenCVVisualization", action="store_true", help="Shows OpenCV frame visualization")
+apr.add_argument("--show-matplotlib-window", dest="showMatPlotLibVisualization", action="store_true", help="Shows Matplotlib output visualization (WARNING: TANKS PERFORMANCE)")
+
+args = apr.parse_args()
+
+# Where are we reading from?
+CAMERA_DEVICE = str(args.inputFile)
+
+# Do we want to disable GPU?
+if args.disableGPU == True:
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
+# Do we want to disable warning messages?
+if args.disableWarnings == True:
+    os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+    warnings.filterwarnings("ignore")
+# ============================================================================ #
+
 import cv2
 import sys
 import time
@@ -18,17 +47,19 @@ from parser import parser
 import savitzkygolay as sg
 import matplotlib.pyplot as plt
 from undistort.undistort import undistort
+from timeit import default_timer as timer
 
 # OpenPilot transformations (needed to get the model to output correct results)
 from common.transformations.model import medmodel_intrinsics
 from common.transformations.camera import transform_img, eon_intrinsics
 
-# ============================================================================ #
-
-# Configure capture here
-CAMERA_DEVICE = sys.argv[1]
-
-# ============================================================================ #
+# Are we running TF on GPU?
+if tf.test.is_gpu_available() == True:
+    isGPU = True
+    tfDevice = "GPU"
+else:
+    isGPU = False
+    tfDevice = "CPU"
 
 # Initialize undistort
 undist = undistort(frame_width=560, frame_height=315)
@@ -64,15 +95,24 @@ state = np.zeros((1, 512))
 # Note: not implemented in SuperDrive (yet)
 desire = np.zeros((1, 8))
 
-# Maximum frame processing time tracker
-maxFrameTime = 0
-firstFrame = True
+# We want to keep track of our FPS rate, so here's
+# some variables to do that
+fpsActual = 0;
+fpsCounter = 0;
+fpsTimestamp = 0;
 
 # Main loop here
 while True:
 
-    # Get frame start time (ns)
-    t_frameStart = time.time_ns()
+    # Get frame start time
+    t_frameStart = timer()
+
+    # FPS counter logic
+    fpsCounter += 1
+    if int(time.time()) > fpsTimestamp:
+        fpsActual = fpsCounter
+        fpsTimestamp = int(time.time())
+        fpsCounter = 0
 
     # Read frame
     (ret, frame) = cap.read()
@@ -136,26 +176,24 @@ while True:
     smoothedRightLanePoints = sg.savitzky_golay(rightLanePoints, 51, 3)
     smoothedPathPoints = sg.savitzky_golay(pathPoints, 51, 3)
 
-    # Get time after output parsing
-    t_afterOutputParsing = time.time_ns()
+    # Compute running time
+    p_totalFrameTime = round((timer() - t_frameStart) * 1000, 2)
 
-    # Compute running times
-    p_totalFrameTime = round((t_afterOutputParsing - t_frameStart) / 1000000, 3)
-
-    # Get maximum frame time for reference (unless this is the first frame,
-    # then we can disregard that since it'll be really high)
-    if p_totalFrameTime > maxFrameTime and firstFrame != True:
-        maxFrameTime = p_totalFrameTime
+    print("Frame processed on " + tfDevice + " \t" + str(p_totalFrameTime) + " ms\t" + str(fpsActual) + " fps")
 
     # Output (enlarged) frame with text overlay
-    if True:
+    if args.showOpenCVVisualization == True:
         canvas = frame.copy()
         canvas = cv2.resize(canvas, ((1024, 512)))
-        cv2.putText(canvas, "Total frame time: " + str(p_totalFrameTime) + " ms (maximum: " + str(maxFrameTime) + " ms)", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
+        cv2.putText(canvas, "Frame processing time: " + str(p_totalFrameTime) + " ms (" + str(fpsActual) + " fps)", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
+        cv2.putText(canvas, "Device: " + tfDevice, (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
+
         cv2.imshow("Frame", canvas)
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
 
     # Draw plots
-    if False:
+    if args.showMatPlotLibVisualization == True:
         plt.clf()
         plt.title("Lane/Path Prediction")
 
@@ -173,9 +211,3 @@ while True:
         # Invert X-axis
         plt.gca().invert_xaxis()
         plt.pause(0.001)
-
-    if cv2.waitKey(1) & 0xFF == ord("q"):
-        break
-
-    # Not first frame anymore
-    firstFrame = False
