@@ -6,6 +6,8 @@
 # a live processing capable, clean(-ish) implementation of lane &
 # path detection based on comma.ai's SuperCombo neural network model
 #
+# @NamoDev
+#
 
 # ============================================================================ #
 # Parse arguments
@@ -18,7 +20,6 @@ apr.add_argument("--input", type=str, dest="inputFile", help="Input capture devi
 apr.add_argument("--disable-gpu", dest="disableGPU", action="store_true", help="Disables the use of GPU for inferencing")
 apr.add_argument("--disable-warnings", dest="disableWarnings", action="store_true", help="Disables console warning messages")
 apr.add_argument("--show-opencv-window", dest="showOpenCVVisualization", action="store_true", help="Shows OpenCV frame visualization")
-apr.add_argument("--show-matplotlib-window", dest="showMatPlotLibVisualization", action="store_true", help="Shows Matplotlib output visualization (WARNING: TANKS PERFORMANCE)")
 
 args = apr.parse_args()
 
@@ -40,12 +41,10 @@ import cv2
 import sys
 import time
 import pathlib
-import matplotlib
 import numpy as np
 import tensorflow as tf
 from parser import parser
 import savitzkygolay as sg
-import matplotlib.pyplot as plt
 from undistort.undistort import undistort
 from timeit import default_timer as timer
 
@@ -185,33 +184,41 @@ while True:
     print("Frame processed on " + tfDevice + " \t" + str(p_totalFrameTime) + " ms\t" + str(fpsActual) + " fps")
 
     # Output (enlarged) frame with text overlay
+    # Note: this section is crap, we need better and more quantitative visualizations
+    # but I'm working on this at 0400 so let's at least get it to show something okay?
     if args.showOpenCVVisualization == True:
         canvas = frame.copy()
         canvas = cv2.resize(canvas, ((1024, 512)))
+
         cv2.putText(canvas, "Vision processing time: " + str(p_totalFrameTime) + " ms (" + str(fpsActual) + " fps)", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
         cv2.putText(canvas, "Device: " + tfDevice, (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
         cv2.putText(canvas, "Position: " + str(round(currentPredictedPos, 3)) + " m off centerline", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
 
-        cv2.imshow("Frame", canvas)
+        # Create canvas for graph plotting
+        plotCanvas = np.zeros((600, 200, 3), dtype=np.uint8)
+
+        # Plot points!
+        ppm = 20
+        for i in range(60):
+            cv2.circle(plotCanvas, (int(100 - abs(leftLanePoints[i] * ppm)), int(i * ppm/2)), 2, (160, 160, 160), -1)
+            cv2.circle(plotCanvas, (int(100 + abs(rightLanePoints[i] * ppm)), int(i * ppm/2)), 2, (160, 160, 160), -1)
+            cv2.circle(plotCanvas, (int(100 - (pathPoints[i] * ppm)), int(i * ppm/2)), 4, (10, 255, 10), -1)
+
+        # Add an "absolute center" triangle
+        cv2.drawContours(plotCanvas, [np.array([(90,0), (110,0), (100, 10)])], 0, (220,220,220), -1)
+
+        # Flip plot path for display
+        plotCanvas = cv2.flip(plotCanvas, 0)
+
+        # Add some texts for distance
+        cv2.putText(plotCanvas, "0 m", (10, 600), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200,200,200), 1)
+        cv2.putText(plotCanvas, "5 m", (10, 500), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200,200,200), 1)
+        cv2.putText(plotCanvas, "10 m", (10, 400), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200,200,200), 1)
+        cv2.putText(plotCanvas, "15 m", (10, 300), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200,200,200), 1)
+        cv2.putText(plotCanvas, "20 m", (10, 200), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200,200,200), 1)
+        cv2.putText(plotCanvas, "25 m", (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200,200,200), 1)
+
+        cv2.imshow("SuperDrive", canvas)
+        cv2.imshow("Vision path", plotCanvas)
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
-
-    # Draw plots
-    if args.showMatPlotLibVisualization == True:
-        plt.clf()
-        plt.title("Lane/Path Prediction")
-
-        # Interactive mode on to not steal output
-        plt.ion()
-
-        # Left/right lane and predicted path
-        plt.plot(leftLanePoints, range(0, 192), "b-", linewidth=1)
-        plt.plot(rightLanePoints, range(0, 192), "r-", linewidth=1)
-        plt.plot(pathPoints, range(0, 192), "g-", linewidth=1)
-
-        # Constrain X-axis so that our plot won't dance around
-        plt.xlim(-5, 5)
-
-        # Invert X-axis
-        plt.gca().invert_xaxis()
-        plt.pause(0.001)
