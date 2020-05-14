@@ -4,7 +4,7 @@
 #
 # SuperDrive
 # a live processing capable, clean(-ish) implementation of lane &
-# path detection based on comma.ai"s SuperCombo neural network model
+# path detection based on comma.ai's SuperCombo neural network model
 #
 
 import cv2
@@ -45,18 +45,18 @@ cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)
 lanedetector = tf.keras.models.load_model("supercombo.keras")
 
 # We need a place to keep two separate consecutive image frames
-# since that"s what SuperCombo uses
+# since that's what SuperCombo uses
 fr0 = np.zeros((384, 512), dtype=np.uint8)
 fr1 = np.zeros((384, 512), dtype=np.uint8)
 
 # SuperCombo requires a feedback of state after each prediction
-# (to improve accuracy?) so we"ll allocate space for that
+# (to improve accuracy?) so we'll allocate space for that
 state = np.zeros((1, 512))
 
 # Additional inputs to the steering model
 #
 # "Those actions are already there, we call it desire.
-#  It"s how the lane changes work" - @Willem from Comma
+#  It's how the lane changes work" - @Willem from Comma
 #
 # Note: not implemented in SuperDrive (yet)
 desire = np.zeros((1, 8))
@@ -76,7 +76,7 @@ while True:
     # Just perform chessboard calibration to get the matrices!
     frame = undist.frame(frame)
 
-    # Crop the edges out and try to get to (512,256), since that"s what
+    # Crop the edges out and try to get to (512,256), since that's what
     # the SuperCombo model uses. Note that this is skewed a bit more
     # to the sky, since my camera can "see" the hood and that probably won't
     # help us in the task of lane detection, so we crop that out
@@ -86,7 +86,7 @@ while True:
     # Then we want to convert this to YUV
     frameYUV = cv2.cvtColor(frame, cv2.COLOR_BGR2YUV_I420)
 
-    # Use Comma"s transformation to get our frame into a format that SuperCombo likes
+    # Use Comma's transformation to get our frame into a format that SuperCombo likes
     frameYUV = transform_img(frameYUV, from_intr=eon_intrinsics,
                              to_intr=medmodel_intrinsics, yuv=True,
                              output_size=(512, 256)).astype(np.float32) \
