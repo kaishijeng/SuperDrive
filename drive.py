@@ -67,7 +67,7 @@ while True:
     # Read frame
     (ret, frame) = cap.read()
 
-    # Resize incoming frame to smaller width (to save resource in undistortion)
+    # Resize incoming frame to smaller size (to save resource in undistortion)
     frame = cv2.resize(frame, (560, 315))
 
     # Undistort incoming frame
@@ -78,7 +78,7 @@ while True:
 
     # Crop the edges out and try to get to (512,256), since that"s what
     # the SuperCombo model uses. Note that this is skewed a bit more
-    # to the sky, since my camera can "see" the hood and that probably won"t
+    # to the sky, since my camera can "see" the hood and that probably won't
     # help us in the task of lane detection, so we crop that out
     frame = frame[14:270, 24:536]
     cv2.imshow("Input", frame)
