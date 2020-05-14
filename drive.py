@@ -100,6 +100,11 @@ fpsActual = 0;
 fpsCounter = 0;
 fpsTimestamp = 0;
 
+# OpenCV named windows for visualization (if requested)
+cv2.namedWindow("SuperDrive", cv2.WINDOW_AUTOSIZE)
+cv2.namedWindow("Vision path", cv2.WINDOW_KEEPRATIO)
+cv2.resizeWindow("Vision path", 200, 500)
+
 # Main loop here
 while True:
 
