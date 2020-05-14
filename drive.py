@@ -184,11 +184,9 @@ while True:
     print("Frame processed on " + tfDevice + " \t" + str(p_totalFrameTime) + " ms\t" + str(fpsActual) + " fps")
 
     # Output (enlarged) frame with text overlay
-    # Note: this section is crap, we need better and more quantitative visualizations
-    # but I'm working on this at 0400 so let's at least get it to show something okay?
     if args.showOpenCVVisualization == True:
         canvas = frame.copy()
-        canvas = cv2.resize(canvas, ((1024, 512)))
+        canvas = cv2.resize(canvas, ((700, 350)))
 
         cv2.putText(canvas, "Vision processing time: " + str(p_totalFrameTime) + " ms (" + str(fpsActual) + " fps)", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
         cv2.putText(canvas, "Device: " + tfDevice, (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
