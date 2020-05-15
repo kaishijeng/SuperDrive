@@ -100,6 +100,12 @@ fpsActual = 0;
 fpsCounter = 0;
 fpsTimestamp = 0;
 
+# Artemis camera specifics:
+# Calibration tube size in image: 65 pixels wide. Actual object is 100mm wide.
+# 555px from left edge of calibration tube to image edge on left
+# 660px from right edge of calibration tube to image edge on right
+# First crop from 1280x720 -> 1175x720
+
 # OpenCV named windows for visualization (if requested)
 cv2.namedWindow("SuperDrive", cv2.WINDOW_AUTOSIZE)
 cv2.namedWindow("Vision path", cv2.WINDOW_KEEPRATIO)
@@ -120,6 +126,10 @@ while True:
 
     # Read frame
     (ret, frame) = cap.read()
+
+    # Perform cropping to guarantee absolute center
+    # First crop from 1280x720 -> 1175x661 (to try and preserve 16:9 AR)
+    frame = frame[0:661, 0:1175]
 
     # Resize incoming frame to smaller size (to save resource in undistortion)
     frame = cv2.resize(frame, (560, 315))
@@ -193,9 +203,7 @@ while True:
         canvas = frame.copy()
         canvas = cv2.resize(canvas, ((700, 350)))
 
-        cv2.putText(canvas, "Vision processing time: " + str(p_totalFrameTime) + " ms (" + str(fpsActual) + " fps)", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
-        cv2.putText(canvas, "Device: " + tfDevice, (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
-        cv2.putText(canvas, "Position: " + str(round(currentPredictedPos, 3)) + " m off centerline", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
+        cv2.putText(canvas, "Vision processing time [" + tfDevice + "]: " + str(p_totalFrameTime) + " ms (" + str(fpsActual) + " fps)", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
 
         # Create canvas for graph plotting
         plotCanvas = np.zeros((500, 200, 3), dtype=np.uint8)
@@ -207,9 +215,19 @@ while True:
         # We know we can only display 500 / ppmY = 50 meters ahead
         # so limiting our loop will allow for a faster processing time
         for i in range(51):
-            cv2.circle(plotCanvas, (int(100 - abs(leftLanePoints[i] * ppmX)), int(i * ppmY)), 2, (160, 160, 160), -1)
-            cv2.circle(plotCanvas, (int(100 + abs(rightLanePoints[i] * ppmX)), int(i * ppmY)), 2, (160, 160, 160), -1)
-            cv2.circle(plotCanvas, (int(100 - (pathPoints[i] * ppmX)), int(i * ppmY)), 4, (10, 255, 10), -1)
+
+            ppLeft = int(100 - abs(leftLanePoints[i] * ppmX))
+            ppRight = int(100 + abs(rightLanePoints[i] * ppmX))
+
+            # Left and right lane lines
+            cv2.circle(plotCanvas, (ppLeft, int(i * ppmY)), 2, (160, 160, 160), -1)
+            cv2.circle(plotCanvas, (ppRight, int(i * ppmY)), 2, (160, 160, 160), -1)
+
+            # Calculated centerline
+            cv2.circle(plotCanvas, (int((ppLeft + ppRight) / 2), int(i * ppmY)), 2, (204, 19, 107), -1)
+
+            # Path
+            cv2.circle(plotCanvas, (int(100 - (pathPoints[i] * ppmX)), int(i * ppmY)), 4, (19, 204, 116), -1)
 
         # Flip plot path for display
         plotCanvas = cv2.flip(plotCanvas, 0)

@@ -1,9 +1,7 @@
-# SuperDrive
+# SuperDrive (Artemis Branch)
 A live-processing capable, clean(-ish) implementation of lane & path detection based on comma.ai's SuperCombo neural network model
 
-Tested with Python 3.8.2, OpenCV 4.2.0, and TensorFlow 2.2.0 on Ubuntu 20.04
-
-[![SuperDrive Demo Video](https://img.youtube.com/vi/kE7CyqWYzKQ/0.jpg)](https://www.youtube.com/watch?v=kE7CyqWYzKQ)
+Note: this has specific adjustments to work with my specific camera mounting position (to better align absolute center of frame to absolute center of the test vehicle) - it won't work well for any other use!
 
 ### Running
 To get a list of all the options, run `python3 drive.py -h`
